@@ -7,8 +7,13 @@ type Landmark = {
   z?: number;
 };
 
-const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
-const HAND_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+function assetUrl(path: string) {
+  const baseUrl = (import.meta as ImportMeta & { env: { BASE_URL: string } }).env.BASE_URL;
+  return new URL(`${baseUrl}${path}`, window.location.origin).toString();
+}
+
+const WASM_URL = assetUrl("mediapipe/wasm");
+const HAND_MODEL_URL = assetUrl("mediapipe/models/hand_landmarker.task");
 
 function distance(a: Landmark, b: Landmark) {
   const dx = a.x - b.x;
