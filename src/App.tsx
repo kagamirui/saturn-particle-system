@@ -13,6 +13,7 @@ import { cn } from './lib/utils';
 
 export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
@@ -23,24 +24,45 @@ export default function App() {
   useEffect(() => {
     if (!videoElement) return;
     let stream: MediaStream | null = null;
+    setIsCameraReady(false);
     
-    navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
-      .then(s => {
+    navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: 'user',
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        frameRate: { ideal: 30, max: 30 },
+      },
+    })
+      .then(async s => {
         stream = s;
         videoElement.srcObject = s;
-        videoElement.play();
+        videoElement.muted = true;
+        videoElement.playsInline = true;
+        await videoElement.play();
+        setIsCameraReady(true);
       })
       .catch(err => console.error("Error accessing webcam:", err));
       
     return () => {
       videoElement.srcObject = null;
+      setIsCameraReady(false);
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
   }, [videoElement]);
 
-  const { openness, isReady } = useHandTracker(videoElement);
+  const { openness, isReady, hasHand, error: trackerError } = useHandTracker(videoElement);
+  const trackingStatus = trackerError
+    ? trackerError
+    : !isReady
+      ? 'LOADING AI'
+      : hasHand
+        ? openness > 0.6 ? 'HAND OPEN' : openness < 0.4 ? 'FIST' : 'TRACKING'
+        : 'SHOW HAND';
+  const statusColor = trackerError ? '#ff4d4f' : hasHand ? '#00ffaa' : '#ffae42';
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -86,8 +108,11 @@ export default function App() {
         <div className="flex flex-col gap-3">
           <h1 className="text-[14px] font-[200] tracking-[0.3em] uppercase text-white">SATURN</h1>
           <p className="bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.1)] py-2 px-4 rounded flex items-center gap-2.5 backdrop-blur-md text-[11px] tracking-[0.08em] sm:tracking-[1px] uppercase text-[rgba(255,255,255,0.85)] max-w-[170px] sm:max-w-none">
-            <span className="w-1.5 h-1.5 bg-[#00ffaa] rounded-full shadow-[0_0_10px_#00ffaa] block"></span>
-            GESTURE TRACKED: {openness > 0.6 ? 'HAND OPEN' : openness < 0.4 ? 'FIST' : 'TRACKING'}
+            <span
+              className="w-1.5 h-1.5 rounded-full block"
+              style={{ backgroundColor: statusColor, boxShadow: `0 0 10px ${statusColor}` }}
+            ></span>
+            GESTURE: {trackingStatus}
           </p>
         </div>
         
@@ -120,8 +145,9 @@ export default function App() {
             ref={setVideoRef}
             className={cn(
               "absolute inset-0 w-full h-full object-cover -scale-x-100 transition-opacity duration-500", 
-              isReady ? "opacity-50" : "opacity-0"
+              isCameraReady ? "opacity-50" : "opacity-0"
             )}
+            autoPlay
             playsInline 
             muted 
           />
@@ -134,7 +160,7 @@ export default function App() {
           {isReady && (
             <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-[rgba(0,0,0,0.5)] px-2 py-1 rounded text-[9px] font-mono border border-[rgba(255,255,255,0.05)] backdrop-blur-md">
               <Camera size={10} />
-              <span className="text-[#00ffaa]">TRACKING</span>
+              <span style={{ color: statusColor }}>{hasHand ? 'TRACKING' : 'SHOW HAND'}</span>
             </div>
           )}
         </div>
