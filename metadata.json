@@ -1,0 +1,6 @@
+{
+  "name": "Saturn Particle System",
+  "description": "A 3D interactive particle system of Saturn controlled by hand gestures via webcam.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
